@@ -1,0 +1,29 @@
+# Build output
+/Debug/
+/Release/
+
+
+
+# STM32CubeIDE / Eclipse workspace metadata
+/.metadata/
+
+# STM32CubeMX generated metadata
+.mxproject
+
+# STM32CubeIDE drivers
+/Drivers/
+
+# Compiled artifacts
+*.o
+*.d
+*.elf
+*.hex
+*.bin
+*.map
+*.list
+*.su
+*.cyclo
+
+# Temporary files
+*.log
+*~
