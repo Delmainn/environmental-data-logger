@@ -20,10 +20,9 @@
 #include "main.h"
 #include "i2c.h"
 #include "gpio.h"
-
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "BME280.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -44,8 +43,10 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-uint8_t bme280_chip_id = 0;
-HAL_StatusTypeDef i2c_status;
+//uint8_t bme280_chip_id = 0;
+//HAL_StatusTypeDef i2c_status;
+BME280 bme280;
+BME280_Status bme_status;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -90,7 +91,8 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C3_Init();
   /* USER CODE BEGIN 2 */
-i2c_status = HAL_I2C_Mem_Read(&hi2c3, (0x77 << 1), 0xD0, I2C_MEMADD_SIZE_8BIT, &bme280_chip_id, 1, 100);
+//i2c_status = HAL_I2C_Mem_Read(&hi2c3, (0x77 << 1), 0xD0, I2C_MEMADD_SIZE_8BIT, &bme280_chip_id, 1, 100);
+  bme_status = BME280_Initialise(&bme280, &hi2c3);
   /* USER CODE END 2 */
 
   /* Infinite loop */
