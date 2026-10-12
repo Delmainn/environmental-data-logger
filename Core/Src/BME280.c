@@ -16,6 +16,9 @@
 #define BME280_NVM_TIMEOUT_MS								100
 #define BME280_I2C_TIMEOUT_MS 								100
 
+#define BME280_STATUS_MEASURING								0x08
+#define BME280_MEAS_TIMEOUT_MS								100
+
 /* BME280 initialization -----------------------------------------------------*/
 
 /*
@@ -256,11 +259,184 @@ BME280_Status BME280_Initialise(
 
 }
 
+HAL_StatusTypeDef BME280_ReadMeasurements(BME280 *dev)
+{
+	uint8_t data[8];
+
+	int32_t adc_P;
+	int32_t adc_T;
+	int32_t adc_H;
+
+	int32_t var1;
+	int32_t var2;
+	int32_t t_fine;
+	int32_t temp_x100;
+
+	int64_t p_var1;
+	int64_t p_var2;
+	int64_t p;
+
+	int32_t h;
+
+	uint8_t ctrl_meas = 0x25;
+	uint8_t sensor_status;
+	uint32_t start_tick;
+
+	HAL_StatusTypeDef status;
+
+	/* Trigger one forced measurement. */
+	status = BME280_WriteRegister(
+					dev,
+					BME280_REG_CTRL_MEAS,
+					&ctrl_meas
+			);
+
+		if (status != HAL_OK){
+
+			return status;
+		}
+
+		/* Wait for the measurement to complete. */
+
+		start_tick = HAL_GetTick();
+
+		do
+		{
+			status = BME280_ReadRegister(
+					dev,
+					BME280_REG_STATUS,
+					&sensor_status
+			);
+
+			if (status != HAL_OK)
+			{
+				return status;
+			}
+
+			if ((HAL_GetTick() - start_tick) > BME280_MEAS_TIMEOUT_MS)
+			{
+				return HAL_TIMEOUT;
+			}
+
+		} while (sensor_status & BME280_STATUS_MEASURING);
 
 
+		/* Read one complete pressure, temperature, and humidity sample. */
+		status = BME280_ReadRegisters(
+			dev,
+			BME280_REG_PRESS_MSB,
+			data,
+			8
+		);
 
+		if (status != HAL_OK)
+		{
+			return status;
+		}
 
+		/* Reconstruct raw pressure, temperature, and humidity ADC values. */
+		adc_P = ((int32_t)data[0] << 12) |
+				((int32_t)data[1] << 4)  |
+				((int32_t)data[2] >> 4);
 
+		adc_T = ((int32_t)data[3] << 12) |
+				((int32_t)data[4] << 4)  |
+				((int32_t)data[5] >> 4);
+
+		adc_H = ((int32_t)data[6] << 8)  |
+				(int32_t)data[7];
+
+		/*
+		 * Bosch reference temperature compensation.
+		 * Produces temperature in 0.01 degC and t_fine for
+		 * pressure and humidity compensation
+		 */
+		var1 = ((((adc_T >> 3) - ((int32_t)dev->dig_T1 << 1))) *
+		        ((int32_t)dev->dig_T2)) >> 11;
+
+		var2 = (((((adc_T >> 4) - ((int32_t)dev->dig_T1)) *
+		          ((adc_T >> 4) - ((int32_t)dev->dig_T1))) >> 12) *
+		        ((int32_t)dev->dig_T3)) >> 14;
+
+		t_fine = var1 + var2;
+
+		temp_x100 = (t_fine * 5 + 128) >> 8;
+
+		dev->temp_C = temp_x100 / 100.0f;
+
+		/*
+		 * Bosch reference pressure compensation.
+		 * Uses t_fine produced by temperature compensation.
+		 */
+		p_var1 = ((int64_t)t_fine) - 128000;
+
+		p_var2 = p_var1 * p_var1 * (int64_t)dev->dig_P6;
+
+		p_var2 = p_var2 +
+		         ((p_var1 * (int64_t)dev->dig_P5) << 17);
+
+		p_var2 = p_var2 +
+		         (((int64_t)dev->dig_P4) << 35);
+
+		p_var1 = ((p_var1 * p_var1 * (int64_t)dev->dig_P3) >> 8) +
+		         ((p_var1 * (int64_t)dev->dig_P2) << 12);
+
+		p_var1 = (((((int64_t)1) << 47) + p_var1) *
+		          ((int64_t)dev->dig_P1)) >> 33;
+
+		if (p_var1 == 0)
+		{
+		    return HAL_ERROR;
+		}
+
+		p = 1048576 - adc_P;
+
+		p = (((p << 31) - p_var2) * 3125) / p_var1;
+
+		p_var1 = (((int64_t)dev->dig_P9) *
+		          (p >> 13) *
+		          (p >> 13)) >> 25;
+
+		p_var2 = (((int64_t)dev->dig_P8) * p) >> 19;
+
+		p = ((p + p_var1 + p_var2) >> 8) +
+		    (((int64_t)dev->dig_P7) << 4);
+
+		dev->pressure_Pa = ((uint32_t)p) / 256.0f;
+
+		/*
+		 * Bosch reference humidity compensation.
+		 * Uses t_fine produced by temperature compensation.
+		 */
+		h = t_fine - 76800;
+
+		h = (((((adc_H << 14) -
+		        (((int32_t)dev->dig_H4) << 20) -
+		        (((int32_t)dev->dig_H5) * h)) +
+		        16384) >> 15) *
+		     (((((((h * ((int32_t)dev->dig_H6)) >> 10) *
+		          (((h * ((int32_t)dev->dig_H3)) >> 11) + 32768)) >> 10) +
+		        2097152) * ((int32_t)dev->dig_H2) + 8192) >> 14));
+
+		h = h -
+		    (((((h >> 15) * (h >> 15)) >> 7) *
+		       ((int32_t)dev->dig_H1)) >> 4);
+
+		if (h < 0)
+		{
+		    h = 0;
+		}
+
+		if (h > 419430400)
+		{
+		    h = 419430400;
+		}
+
+		dev->humidity_RH = ((uint32_t)(h >> 12)) / 1024.0f;
+
+		return HAL_OK;
+
+}
 
 /* Low-level register access -------------------------------------------------*/
 
