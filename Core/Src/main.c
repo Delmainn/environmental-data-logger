@@ -48,7 +48,8 @@
 BME280 bme280;
 BME280_Status bme_status;
 HAL_StatusTypeDef meas_status;
-
+uint8_t found_addresses[8];
+uint8_t found_count = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -95,7 +96,21 @@ int main(void)
   /* USER CODE BEGIN 2 */
 //i2c_status = HAL_I2C_Mem_Read(&hi2c3, (0x77 << 1), 0xD0, I2C_MEMADD_SIZE_8BIT, &bme280_chip_id, 1, 100);
   bme_status = BME280_Initialise(&bme280, &hi2c3);
+  found_count = 0;
 
+  for (uint8_t address = 1; address < 128; address++)
+  {
+      if (HAL_I2C_IsDeviceReady(&hi2c3, address << 1, 1, 10) == HAL_OK)
+      {
+          found_addresses[found_count] = address;
+          found_count++;
+
+          if (found_count >= 8)
+          {
+              break;
+          }
+      }
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -103,8 +118,7 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-	  meas_status = BME280_ReadMeasurements(&bme280);
-	  HAL_Delay(1000);
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
