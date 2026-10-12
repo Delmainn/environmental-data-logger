@@ -95,7 +95,6 @@ int main(void)
   /* USER CODE BEGIN 2 */
 //i2c_status = HAL_I2C_Mem_Read(&hi2c3, (0x77 << 1), 0xD0, I2C_MEMADD_SIZE_8BIT, &bme280_chip_id, 1, 100);
   bme_status = BME280_Initialise(&bme280, &hi2c3);
-  meas_status = BME280_ReadMeasurements(&bme280);
 
   /* USER CODE END 2 */
 
@@ -104,7 +103,8 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+	  meas_status = BME280_ReadMeasurements(&bme280);
+	  HAL_Delay(1000);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
