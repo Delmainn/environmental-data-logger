@@ -20,9 +20,6 @@
 #define OLED_CMD_SET_COM_PINS			0xDA
 #define OLED_COM_PINS_CONFIG			0x12
 
-/*
-#define OLED_CMD_SET_IREF				0xAD
-#define OLED_IREF_INTERNAL				0x10 */
 
 #define OLED_CMD_CHARGE_PUMP			0x8D
 #define OLED_CHARGE_PUMP_ENABLE			0x14
@@ -31,11 +28,13 @@
 
 #define OLED_CMD_SET_PRECHARGE		 	0xD9
 #define OLED_PRECHARGE_VENDOR			0xF1
+
 #define OLED_CMD_SET_VCOMH				0xDB
 #define OLED_VCOMH_VENDOR				0x30
 
 #define OLED_CMD_SET_CONTRAST			0x81
-#define OLED_CONTRAST_DEFAULT			0x7F
+#define OLED_CONTRAST_VENDOR			0x66
+
 #define OLED_CMD_SET_MEMORY_MODE		0x20
 #define OLED_MEMORY_MODE_HORIZONTAL		0x00
 #define OLED_CMD_NORMAL_DISPLAY			0xA6
@@ -118,6 +117,14 @@ HAL_StatusTypeDef OLED_Initialise(OLED *dev, I2C_HandleTypeDef *i2cHandle)
 	/* Step 1 succeeded */
 	dev->fail_step = 0;
 
+	/* Use the controller's reset/default display clock settings */
+	if (OLED_SendCommandWithParam(dev,
+			                      OLED_CMD_SET_DISPLAY_CLOCK,
+								  OLED_DISPLAY_CLOCK_DEFAULT) != HAL_OK)
+	{
+		return HAL_ERROR;
+	}
+
 	/* Configure panel for 64 active rows */
 	if (OLED_SendCommandWithParam(dev,
 								  OLED_CMD_SET_MULTIPLEX,
@@ -160,25 +167,16 @@ HAL_StatusTypeDef OLED_Initialise(OLED *dev, I2C_HandleTypeDef *i2cHandle)
 		return HAL_ERROR;
 	}
 
-	/* Use the SSD1315 internal current reference to drive OLED segment current
-	if (OLED_SendCommandWithParam(dev,
-			                      OLED_CMD_SET_IREF,
-								  OLED_IREF_INTERNAL)!= HAL_OK)
-	{
-		return HAL_ERROR;
-	}*/
 
-	/*space*/
-
-	/* Use the controller's reset/default display clock settings */
+	/* Use the module vendor's recommended display contrast level */
 	if (OLED_SendCommandWithParam(dev,
-			                      OLED_CMD_SET_DISPLAY_CLOCK,
-								  OLED_DISPLAY_CLOCK_DEFAULT) != HAL_OK)
+			                      OLED_CMD_SET_CONTRAST,
+								  OLED_CONTRAST_VENDOR) != HAL_OK)
 	{
 		return HAL_ERROR;
 	}
 
-	/* Use the controller's default OLED pre-charge timing */
+	/* Use the module vendor's recommended OLED pre-charge timing */
 	if (OLED_SendCommandWithParam(dev,
 			                      OLED_CMD_SET_PRECHARGE,
 								  OLED_PRECHARGE_VENDOR) != HAL_OK)
@@ -186,18 +184,10 @@ HAL_StatusTypeDef OLED_Initialise(OLED *dev, I2C_HandleTypeDef *i2cHandle)
 		return HAL_ERROR;
 	}
 
-	/* Use the controller's default VCOMH de-select level */
+	/* Use the module vendor's recommended VCOMH de-select level */
 	if (OLED_SendCommandWithParam(dev,
 			                      OLED_CMD_SET_VCOMH,
 								  OLED_VCOMH_VENDOR) != HAL_OK)
-	{
-		return HAL_ERROR;
-	}
-
-	/* Use the controller's default display contrast level */
-	if (OLED_SendCommandWithParam(dev,
-			                      OLED_CMD_SET_CONTRAST,
-								  OLED_CONTRAST_DEFAULT) != HAL_OK)
 	{
 		return HAL_ERROR;
 	}
@@ -210,16 +200,16 @@ HAL_StatusTypeDef OLED_Initialise(OLED *dev, I2C_HandleTypeDef *i2cHandle)
 		return HAL_ERROR;
 	}
 
-	/* Use normal pixel polarity: RAM 0 = pixel off, RAM 1 = pixel on */
-	if (OLED_SendCommand(dev, OLED_CMD_NORMAL_DISPLAY) != HAL_OK)
-	{
-		return HAL_ERROR;
-	}
-
 	/* Display pixel data from GDDRAM */
 	if (OLED_SendCommand(dev, OLED_CMD_DISPLAY_RAM) != HAL_OK)
 	{
 	    return HAL_ERROR;
+	}
+
+	/* Use normal pixel polarity: RAM 0 = pixel off, RAM 1 = pixel on */
+	if (OLED_SendCommand(dev, OLED_CMD_NORMAL_DISPLAY) != HAL_OK)
+	{
+		return HAL_ERROR;
 	}
 
 	/* Enable the OLED controller's internal charge pump */
@@ -237,11 +227,6 @@ HAL_StatusTypeDef OLED_Initialise(OLED *dev, I2C_HandleTypeDef *i2cHandle)
 	}
 		HAL_Delay(100);  /* vendor p.13: let the panel supply stabilize */
 
-	/* Temporary bring-up test: force all OLED pixels on, ignoring GDDRAM */
-	if (OLED_SendCommand(dev, OLED_CMD_ENTIRE_DISPLAY_ON) != HAL_OK)
-	{
-		return HAL_ERROR;
-	}
 		dev->fail_step = 0;
 		dev->i2c_error = HAL_I2C_ERROR_NONE;
 
