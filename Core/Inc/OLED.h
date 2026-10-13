@@ -22,6 +22,8 @@
 typedef struct
 {
 	I2C_HandleTypeDef *i2cHandle;
+    uint8_t fail_step;      /* 0 = no failure */
+    uint32_t i2c_error;     /* HAL I2C error code at failure */
 }OLED;
 
 /* Initialisation */
