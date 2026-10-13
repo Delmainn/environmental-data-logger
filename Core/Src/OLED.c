@@ -99,137 +99,214 @@ static HAL_StatusTypeDef OLED_SendCommandWithParam(OLED *dev,
 /*
  * Initializes the OLED controller and associate it with an STM32 I2C peripheral
  */
-HAL_StatusTypeDef OLED_Initialise(OLED *dev, I2C_HandleTypeDef *i2cHandle)
+OLED_Status OLED_Initialise(OLED *dev, I2C_HandleTypeDef *i2cHandle)
 {
+	if ((dev == NULL) || (i2cHandle == NULL))
+	{
+		return OLED_ERROR_INVALID_ARG;
+	}
 	dev->i2cHandle = i2cHandle;
-	dev->fail_step = 0;
+	dev->failed_step= OLED_INIT_STEP_NONE;
 	dev->i2c_error = HAL_I2C_ERROR_NONE;
 
-	/* Step 1: Keep display off while controller settings are configured */
-	dev->fail_step = 1;
+	/* Keep display off while controller settings are configured */
+	dev->failed_step = OLED_INIT_STEP_DISPLAY_OFF;
 
 	if (OLED_SendCommand(dev, OLED_CMD_DISPLAY_OFF) != HAL_OK)
 	{
 	    dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
-	    return HAL_ERROR;
+	    return OLED_ERROR_I2C;
 	}
 
-	/* Step 1 succeeded */
-	dev->fail_step = 0;
+	dev->failed_step = OLED_INIT_STEP_NONE;
 
 	/* Use the controller's reset/default display clock settings */
+	dev->failed_step = OLED_INIT_STEP_DISPLAY_CLOCK;
+
 	if (OLED_SendCommandWithParam(dev,
 			                      OLED_CMD_SET_DISPLAY_CLOCK,
 								  OLED_DISPLAY_CLOCK_DEFAULT) != HAL_OK)
 	{
-		return HAL_ERROR;
+		dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+		return OLED_ERROR_I2C;
 	}
+
+	dev->failed_step = OLED_INIT_STEP_NONE;
 
 	/* Configure panel for 64 active rows */
+	dev->failed_step = OLED_INIT_STEP_MULTIPLEX;
+
 	if (OLED_SendCommandWithParam(dev,
-								  OLED_CMD_SET_MULTIPLEX,
-							      OLED_MUX_RATIO_64)!= HAL_OK)
+	                              OLED_CMD_SET_MULTIPLEX,
+	                              OLED_MUX_RATIO_64) != HAL_OK)
 	{
-		return HAL_ERROR;
+	    dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+	    return OLED_ERROR_I2C;
 	}
+
+	dev->failed_step = OLED_INIT_STEP_NONE;
 
 	/* Align display RAM with the top physical row */
+	dev->failed_step = OLED_INIT_STEP_DISPLAY_OFFSET;
+
 	if (OLED_SendCommandWithParam(dev,
-								  OLED_CMD_SET_DISPLAY_OFFSET,
-								  OLED_DISPLAY_OFFSET_ZERO)!= HAL_OK)
+	                              OLED_CMD_SET_DISPLAY_OFFSET,
+	                              OLED_DISPLAY_OFFSET_ZERO) != HAL_OK)
 	{
-		return HAL_ERROR;
+	    dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+	    return OLED_ERROR_I2C;
 	}
+
+	dev->failed_step = OLED_INIT_STEP_NONE;
 
 	/* Use display RAM line 0 as the top visible row */
+	dev->failed_step = OLED_INIT_STEP_START_LINE;
+
 	if (OLED_SendCommand(dev, OLED_CMD_SET_START_LINE_0) != HAL_OK)
 	{
-		return HAL_ERROR;
+	    dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+	    return OLED_ERROR_I2C;
 	}
+
+	dev->failed_step = OLED_INIT_STEP_NONE;
 
 	/* Map display RAM horizontally to match the panel's physical orientation */
+	dev->failed_step = OLED_INIT_STEP_SEGMENT_REMAP;
+
 	if (OLED_SendCommand(dev, OLED_CMD_SEGMENT_REMAP) != HAL_OK)
 	{
-		return HAL_ERROR;
+	    dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+	    return OLED_ERROR_I2C;
 	}
+
+	dev->failed_step = OLED_INIT_STEP_NONE;
 
 	/* Scan COM lines in reverse order to match the panel's vertical orientation */
+	dev->failed_step = OLED_INIT_STEP_COM_SCAN;
+
 	if (OLED_SendCommand(dev, OLED_CMD_COM_SCAN_REMAP) != HAL_OK)
 	{
-		return HAL_ERROR;
+	    dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+	    return OLED_ERROR_I2C;
 	}
+
+	dev->failed_step = OLED_INIT_STEP_NONE;
 
 	/* Configure COM pin hardware for the 128x64 panel layout */
+	dev->failed_step = OLED_INIT_STEP_COM_PINS;
+
 	if (OLED_SendCommandWithParam(dev,
-			                      OLED_CMD_SET_COM_PINS,
-								  OLED_COM_PINS_CONFIG)!= HAL_OK)
+	                              OLED_CMD_SET_COM_PINS,
+	                              OLED_COM_PINS_CONFIG) != HAL_OK)
 	{
-		return HAL_ERROR;
+	    dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+	    return OLED_ERROR_I2C;
 	}
 
+	dev->failed_step = OLED_INIT_STEP_NONE;
 
 	/* Use the module vendor's recommended display contrast level */
+	dev->failed_step = OLED_INIT_STEP_CONTRAST;
+
 	if (OLED_SendCommandWithParam(dev,
-			                      OLED_CMD_SET_CONTRAST,
-								  OLED_CONTRAST_VENDOR) != HAL_OK)
+	                              OLED_CMD_SET_CONTRAST,
+	                              OLED_CONTRAST_VENDOR) != HAL_OK)
 	{
-		return HAL_ERROR;
+	    dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+	    return OLED_ERROR_I2C;
 	}
+
+	dev->failed_step = OLED_INIT_STEP_NONE;
 
 	/* Use the module vendor's recommended OLED pre-charge timing */
+	dev->failed_step = OLED_INIT_STEP_PRECHARGE;
+
 	if (OLED_SendCommandWithParam(dev,
-			                      OLED_CMD_SET_PRECHARGE,
-								  OLED_PRECHARGE_VENDOR) != HAL_OK)
+	                              OLED_CMD_SET_PRECHARGE,
+	                              OLED_PRECHARGE_VENDOR) != HAL_OK)
 	{
-		return HAL_ERROR;
+	    dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+	    return OLED_ERROR_I2C;
 	}
+
+	dev->failed_step = OLED_INIT_STEP_NONE;
 
 	/* Use the module vendor's recommended VCOMH de-select level */
+	dev->failed_step = OLED_INIT_STEP_VCOMH;
+
 	if (OLED_SendCommandWithParam(dev,
-			                      OLED_CMD_SET_VCOMH,
-								  OLED_VCOMH_VENDOR) != HAL_OK)
+	                              OLED_CMD_SET_VCOMH,
+	                              OLED_VCOMH_VENDOR) != HAL_OK)
 	{
-		return HAL_ERROR;
+	    dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+	    return OLED_ERROR_I2C;
 	}
+
+	dev->failed_step = OLED_INIT_STEP_NONE;
 
 	/* Use horizontal addressing so framebuffer data advances across columns, then pages */
+	dev->failed_step = OLED_INIT_STEP_MEMORY_MODE;
+
 	if (OLED_SendCommandWithParam(dev,
-			                      OLED_CMD_SET_MEMORY_MODE,
-								  OLED_MEMORY_MODE_HORIZONTAL) != HAL_OK)
+	                              OLED_CMD_SET_MEMORY_MODE,
+	                              OLED_MEMORY_MODE_HORIZONTAL) != HAL_OK)
 	{
-		return HAL_ERROR;
+	    dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+	    return OLED_ERROR_I2C;
 	}
+
+	dev->failed_step = OLED_INIT_STEP_NONE;
 
 	/* Display pixel data from GDDRAM */
+	dev->failed_step = OLED_INIT_STEP_DISPLAY_RAM;
+
 	if (OLED_SendCommand(dev, OLED_CMD_DISPLAY_RAM) != HAL_OK)
 	{
-	    return HAL_ERROR;
+	    dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+	    return OLED_ERROR_I2C;
 	}
+
+	dev->failed_step = OLED_INIT_STEP_NONE;
 
 	/* Use normal pixel polarity: RAM 0 = pixel off, RAM 1 = pixel on */
+	dev->failed_step = OLED_INIT_STEP_NORMAL_DISPLAY;
+
 	if (OLED_SendCommand(dev, OLED_CMD_NORMAL_DISPLAY) != HAL_OK)
 	{
-		return HAL_ERROR;
+	    dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+	    return OLED_ERROR_I2C;
 	}
+
+	dev->failed_step = OLED_INIT_STEP_NONE;
 
 	/* Enable the OLED controller's internal charge pump */
+	dev->failed_step = OLED_INIT_STEP_CHARGE_PUMP;
+
 	if (OLED_SendCommandWithParam(dev,
-			                      OLED_CMD_CHARGE_PUMP,
-								  OLED_CHARGE_PUMP_ENABLE) != HAL_OK)
+	                              OLED_CMD_CHARGE_PUMP,
+	                              OLED_CHARGE_PUMP_ENABLE) != HAL_OK)
 	{
-		return HAL_ERROR;
+	    dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+	    return OLED_ERROR_I2C;
 	}
+
+	dev->failed_step = OLED_INIT_STEP_NONE;
 
 	/* Enable the OLED panel after all controller settings are configured */
+	dev->failed_step = OLED_INIT_STEP_DISPLAY_ON;
+
 	if (OLED_SendCommand(dev, OLED_CMD_DISPLAY_ON) != HAL_OK)
 	{
-		return HAL_ERROR;
+	    dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+	    return OLED_ERROR_I2C;
 	}
-		HAL_Delay(100);  /* vendor p.13: let the panel supply stabilize */
 
-		dev->fail_step = 0;
-		dev->i2c_error = HAL_I2C_ERROR_NONE;
+	dev->failed_step = OLED_INIT_STEP_NONE;
 
-		return HAL_OK;
+	HAL_Delay(100);  /* vendor p.13: let the panel supply stabilize */
+
+	dev->i2c_error = HAL_I2C_ERROR_NONE;
+
+	return OLED_OK;
 
 }

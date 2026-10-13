@@ -53,7 +53,7 @@ uint8_t found_addresses[8];
 uint8_t found_count = 0;
 
 OLED oled;
-HAL_StatusTypeDef oled_status;
+OLED_Status oled_status;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
