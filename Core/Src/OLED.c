@@ -55,6 +55,20 @@
 #define	OLED_PAGE_END					0x07
 
 #define OLED_GDDRAM_SIZE				1024
+
+/*
+ * 5x7 bitmap for the character 'A'
+ */
+
+static const uint8_t OLED_GLYPH_A[5] =
+{
+		0x7E,
+		0x09,
+		0x09,
+		0x09,
+		0x7E
+};
+
 /*
  * Sends a single command byte to the OLED controller over I2C
  *
@@ -109,7 +123,7 @@ static HAL_StatusTypeDef OLED_SendCommandWithParam(OLED *dev,
  * Sends display data bytes to the OLED GDDRAM
  */
 static HAL_StatusTypeDef OLED_SendData(OLED *dev,
-										uint8_t *data,
+										const uint8_t *data,
 										uint16_t size)
 {
 	uint8_t packet[OLED_DATA_CHUNK_SIZE + 1];
@@ -232,6 +246,42 @@ OLED_Status OLED_Fill(OLED *dev, uint8_t pattern)
 	dev->i2c_error = HAL_I2C_ERROR_NONE;
 	return OLED_OK;
 }
+
+/*
+ * Draw a test 'A' glyph to verify character rendering
+ */
+OLED_Status OLED_DrawTestA(OLED *dev)
+{
+	/* Set the active GDDRAM column range to the 5-pixel glyph width */
+	if (OLED_SendCommandWithTwoParams(
+			dev,
+			OLED_CMD_SET_COLUMN_ADDRESS,
+			0x00,
+			0x04) != HAL_OK)
+	{
+		dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+		return OLED_ERROR_I2C;
+	}
+	/* Select the first GDDRAM page for the 7-pixel-high glyph */
+	if (OLED_SendCommandWithTwoParams(
+	            dev,
+	            OLED_CMD_SET_PAGE_ADDRESS,
+	            0x00,
+	            0x00) != HAL_OK)
+	    {
+	        dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+	        return OLED_ERROR_I2C;
+	    }
+	if (OLED_SendData(dev, OLED_GLYPH_A, 5) != HAL_OK)
+	{
+		dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+		return OLED_ERROR_I2C;
+	}
+
+	dev->i2c_error = HAL_I2C_ERROR_NONE;
+	return OLED_OK;
+}
+
 
 /*
  * Initializes the OLED controller and associate it with an STM32 I2C peripheral

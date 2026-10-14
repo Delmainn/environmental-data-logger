@@ -123,8 +123,11 @@ int main(void)
   if (oled_status == OLED_OK)
   {
       oled_status = OLED_Clear(&oled);
-	 // oled_status = OLED_Fill(&oled, 0xAA);
-  }
+	if(oled_status == OLED_OK)
+	{
+		oled_status = OLED_DrawTestA(&oled);
+	}
+   }
   /* USER CODE END 2 */
 
   /* Infinite loop */
