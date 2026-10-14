@@ -69,7 +69,10 @@ OLED_Status OLED_Fill(OLED *dev, uint8_t pattern);
 /* Initialize the OLED controller on the selected I2C peripheral */
 OLED_Status OLED_Initialise(OLED *dev, I2C_HandleTypeDef *i2cHandle);
 
-/* Draw a test 'A' glyph to verify character rendering */
-OLED_Status OLED_DrawTestA(OLED *dev);
+/* Draw a single character glyph at the selected column and page */
+OLED_Status OLED_DrawChar(OLED *dev,
+						  char character,
+						  uint8_t column,
+						  uint8_t page);
 
 #endif /* OLED_I2C_DRIVER_H */

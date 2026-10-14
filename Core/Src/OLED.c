@@ -8,6 +8,7 @@
  */
 
 #include "OLED.h"
+#include "font5x7.h"
 
 #define OLED_CMD_DISPLAY_OFF        	0xAE
 #define OLED_CMD_SET_MULTIPLEX      	0xA8
@@ -55,19 +56,6 @@
 #define	OLED_PAGE_END					0x07
 
 #define OLED_GDDRAM_SIZE				1024
-
-/*
- * 5x7 bitmap for the character 'A'
- */
-
-static const uint8_t OLED_GLYPH_A[5] =
-{
-		0x7E,
-		0x09,
-		0x09,
-		0x09,
-		0x7E
-};
 
 /*
  * Sends a single command byte to the OLED controller over I2C
@@ -248,31 +236,40 @@ OLED_Status OLED_Fill(OLED *dev, uint8_t pattern)
 }
 
 /*
- * Draw a test 'A' glyph to verify character rendering
+ * Draw a single character glyph at the selected column and page
  */
-OLED_Status OLED_DrawTestA(OLED *dev)
+OLED_Status OLED_DrawChar(OLED *dev,
+						  char character,
+						  uint8_t column,
+						  uint8_t page)
 {
-	/* Set the active GDDRAM column range to the 5-pixel glyph width */
+	uint16_t glyph_offset =
+		(character - FONT5X7_FIRST_CHAR) * FONT5X7_WIDTH;
+
+	/* Set the active GDDRAM column range to the glyph width */
 	if (OLED_SendCommandWithTwoParams(
 			dev,
 			OLED_CMD_SET_COLUMN_ADDRESS,
-			0x00,
-			0x04) != HAL_OK)
+			column,
+			column + FONT5X7_WIDTH - 1) != HAL_OK)
 	{
 		dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
 		return OLED_ERROR_I2C;
 	}
-	/* Select the first GDDRAM page for the 7-pixel-high glyph */
+	/* Select the requested GDDRAM page */
 	if (OLED_SendCommandWithTwoParams(
 	            dev,
 	            OLED_CMD_SET_PAGE_ADDRESS,
-	            0x00,
-	            0x00) != HAL_OK)
+	            page,
+	            page) != HAL_OK)
 	    {
 	        dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
 	        return OLED_ERROR_I2C;
 	    }
-	if (OLED_SendData(dev, OLED_GLYPH_A, 5) != HAL_OK)
+	if (OLED_SendData(
+			dev,
+			&Font5x7[glyph_offset],
+			FONT5X7_WIDTH) != HAL_OK)
 	{
 		dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
 		return OLED_ERROR_I2C;
