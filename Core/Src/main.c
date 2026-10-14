@@ -105,34 +105,6 @@ int main(void)
   /* USER CODE BEGIN 2 */
   bme_status = BME280_Initialise(&bme280, &hi2c3);
 
-  if (bme_status == BME280_OK)
-  {
-	  /* Get/update BME280 measurement */
-	  meas_status = BME280_ReadMeasurements(&bme280);
-
-  if (meas_status == HAL_OK)
-  {
-	  /* Convert temperature number into text */
-	  snprintf(temp_text,
-			  sizeof(temp_text),
-			  "%.1f C",
-			  bme280.temp_C);
-
-	  snprintf(humidity_text,
-           sizeof(humidity_text),
-           "%.1f %%",        /* %% prints a literal percent sign */
-           bme280.humidity_RH);
-
-	  snprintf(pressure_text,
-	           sizeof(pressure_text),
-	           "%.1f hPa",
-	           bme280.pressure_Pa / 100.0f);
-
-  }
-}
-
-
-
   found_count = 0;
 
   for (uint8_t address = 1; address < 128; address++)
@@ -161,27 +133,12 @@ int main(void)
 
 		if (oled_status == OLED_OK)
 		{
-			oled_status = OLED_DrawString(&oled, temp_text, 36, 0);
-		}
-
-		if (oled_status == OLED_OK)
-		{
 			oled_status = OLED_DrawString(&oled, "RH:", 0, 2);
 		}
 
 		if (oled_status == OLED_OK)
 		{
-		    oled_status = OLED_DrawString(&oled, humidity_text, 24, 2);
-		}
-
-		if (oled_status == OLED_OK)
-		{
 			oled_status = OLED_DrawString(&oled, "PRESS:", 0, 4);
-		}
-
-		if (oled_status == OLED_OK)
-		{
-			oled_status = OLED_DrawString(&oled, pressure_text, 42, 4);
 		}
 
 		if (oled_status == OLED_OK)
@@ -196,6 +153,37 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  meas_status = BME280_ReadMeasurements(&bme280);
+
+	     if (meas_status == HAL_OK)
+	     {
+	         snprintf(temp_text,
+	                  sizeof(temp_text),
+	                  "%5.1f C",
+	                  bme280.temp_C);
+
+	         snprintf(humidity_text,
+	                  sizeof(humidity_text),
+	                  "%5.1f %%",
+	                  bme280.humidity_RH);
+
+	         snprintf(pressure_text,
+	                  sizeof(pressure_text),
+	                  "%6.1f hPa",
+	                  bme280.pressure_Pa / 100.0f);
+
+	         OLED_DrawString(&oled, temp_text, 36, 0);
+	         OLED_DrawString(&oled, humidity_text, 24, 2);
+	         OLED_DrawString(&oled, pressure_text, 42, 4);
+	     }
+	     else
+	     {
+	         OLED_DrawString(&oled, "ERR    ",    36, 0);
+	         OLED_DrawString(&oled, "ERR    ",    24, 2);
+	         OLED_DrawString(&oled, "ERR       ", 42, 4);
+	     }
+
+	     HAL_Delay(1000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
