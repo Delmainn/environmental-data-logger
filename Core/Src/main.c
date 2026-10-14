@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include "BME280.h"
 #include "OLED.h"
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -54,6 +55,10 @@ uint8_t found_count = 0;
 
 OLED oled;
 OLED_Status oled_status;
+
+char temp_text[16];
+char humidity_text[16];
+char pressure_text[16];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -98,8 +103,35 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C3_Init();
   /* USER CODE BEGIN 2 */
-//i2c_status = HAL_I2C_Mem_Read(&hi2c3, (0x77 << 1), 0xD0, I2C_MEMADD_SIZE_8BIT, &bme280_chip_id, 1, 100);
   bme_status = BME280_Initialise(&bme280, &hi2c3);
+
+  if (bme_status == BME280_OK)
+  {
+	  /* Get/update BME280 measurement */
+	  meas_status = BME280_ReadMeasurements(&bme280);
+
+  if (meas_status == HAL_OK)
+  {
+	  /* Convert temperature number into text */
+	  snprintf(temp_text,
+			  sizeof(temp_text),
+			  "%.1f C",
+			  bme280.temp_C);
+
+	  snprintf(humidity_text,
+           sizeof(humidity_text),
+           "%.1f %%",        /* %% prints a literal percent sign */
+           bme280.humidity_RH);
+
+	  snprintf(pressure_text,
+	           sizeof(pressure_text),
+	           "%.1f hPa",
+	           bme280.pressure_Pa / 100.0f);
+
+  }
+}
+
+
 
   found_count = 0;
 
@@ -129,12 +161,27 @@ int main(void)
 
 		if (oled_status == OLED_OK)
 		{
+			oled_status = OLED_DrawString(&oled, temp_text, 36, 0);
+		}
+
+		if (oled_status == OLED_OK)
+		{
 			oled_status = OLED_DrawString(&oled, "RH:", 0, 2);
 		}
 
 		if (oled_status == OLED_OK)
 		{
+		    oled_status = OLED_DrawString(&oled, humidity_text, 24, 2);
+		}
+
+		if (oled_status == OLED_OK)
+		{
 			oled_status = OLED_DrawString(&oled, "PRESS:", 0, 4);
+		}
+
+		if (oled_status == OLED_OK)
+		{
+			oled_status = OLED_DrawString(&oled, pressure_text, 42, 4);
 		}
 
 		if (oled_status == OLED_OK)
