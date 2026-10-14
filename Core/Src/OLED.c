@@ -44,6 +44,17 @@
 
 #define OLED_CMD_ENTIRE_DISPLAY_ON		0xA5
 
+#define OLED_DATA_CHUNK_SIZE			16
+
+#define OLED_CMD_SET_COLUMN_ADDRESS		0x21
+#define OLED_CMD_SET_PAGE_ADDRESS		0x22
+
+#define OLED_COLUMN_START				0x00
+#define OLED_COLUMN_END					0x7F
+#define OLED_PAGE_START					0x00
+#define	OLED_PAGE_END					0x07
+
+#define OLED_GDDRAM_SIZE				1024
 /*
  * Sends a single command byte to the OLED controller over I2C
  *
@@ -94,6 +105,118 @@ static HAL_StatusTypeDef OLED_SendCommandWithParam(OLED *dev,
 	);
 }
 
+/*
+ * Sends display data bytes to the OLED GDDRAM
+ */
+static HAL_StatusTypeDef OLED_SendData(OLED *dev,
+										uint8_t *data,
+										uint16_t size)
+{
+	uint8_t packet[OLED_DATA_CHUNK_SIZE + 1];
+
+	while (size > 0)
+	{
+	uint16_t chunk_size;
+
+	if (size > OLED_DATA_CHUNK_SIZE)
+	{
+		chunk_size = OLED_DATA_CHUNK_SIZE;
+	} else{
+		chunk_size = size;
+	}
+
+	/* GDDRAM data control byte */
+	packet[0] = 0x40;
+
+	/* Copy display bytes after the control byte */
+	for (uint16_t i = 0; i < chunk_size; i ++)
+	{
+		packet[i + 1] = data[i];
+	}
+
+	if (HAL_I2C_Master_Transmit(
+		dev->i2cHandle,
+		OLED_I2C_ADDR,
+		packet,
+		chunk_size + 1,
+		100) != HAL_OK)
+	{
+		return HAL_ERROR;
+	}
+
+	data += chunk_size;
+	size -= chunk_size;
+
+	}
+	return HAL_OK;
+
+}
+
+/*
+ * Sends a command byte followed by two parameter bytes in the same I2C transaction
+ */
+static HAL_StatusTypeDef OLED_SendCommandWithTwoParams(
+	OLED *dev,
+	uint8_t command,
+	uint8_t param1,
+	uint8_t param2)
+{
+	uint8_t packet[4];
+	packet[0] = 0x00;
+	packet[1] = command;
+	packet[2] = param1;
+	packet[3] = param2;
+
+	return HAL_I2C_Master_Transmit(
+		dev->i2cHandle,
+		OLED_I2C_ADDR,
+		packet,
+		4,
+		100
+	);
+}
+
+/*
+ * Clears the OLED display by writing zeros to the full GDDRAM
+ */
+
+OLED_Status OLED_Clear(OLED *dev)
+{
+	/* Set the active GDDRAM column range to the full display width */
+	if (OLED_SendCommandWithTwoParams(
+			dev,
+			OLED_CMD_SET_COLUMN_ADDRESS,
+			OLED_COLUMN_START,
+			OLED_COLUMN_END) != HAL_OK)
+	{
+		dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+		return OLED_ERROR_I2C;
+	}
+
+	/* Set the active GDDRAM page range to the full display height */
+	if (OLED_SendCommandWithTwoParams(
+			dev,
+			OLED_CMD_SET_PAGE_ADDRESS,
+			OLED_PAGE_START,
+			OLED_PAGE_END) != HAL_OK)
+	{
+		dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+		return OLED_ERROR_I2C;
+	}
+	uint8_t clear_data[OLED_DATA_CHUNK_SIZE] = {0};
+
+	/* Clear the full GDDRAM in 16-byte blocks */
+	for (uint16_t i = 0; i < OLED_GDDRAM_SIZE; i += OLED_DATA_CHUNK_SIZE)
+	{
+		if (OLED_SendData(dev, clear_data, OLED_DATA_CHUNK_SIZE) != HAL_OK)
+		{
+			dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+			return OLED_ERROR_I2C;
+		}
+	}
+    	dev->i2c_error = HAL_I2C_ERROR_NONE;
+    	return OLED_OK;
+}
 
 
 /*

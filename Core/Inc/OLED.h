@@ -60,6 +60,9 @@ typedef struct
 	uint32_t i2c_error;		   /* HAL I2C error captured at failure */
 }OLED;
 
+/* Clear all pixels in the OLED GDDRAM */
+OLED_Status OLED_Clear(OLED *dev);
+
 /* Initialize the OLED controller on the selected I2C peripheral */
 OLED_Status OLED_Initialise(OLED *dev, I2C_HandleTypeDef *i2cHandle);
 

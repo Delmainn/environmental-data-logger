@@ -119,6 +119,11 @@ int main(void)
 
   HAL_Delay(100);
   oled_status = OLED_Initialise(&oled, &hi2c3);   /* Initialize the OLED controller on I2C3 */
+
+  if (oled_status == OLED_OK)
+  {
+      oled_status = OLED_Clear(&oled);
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
