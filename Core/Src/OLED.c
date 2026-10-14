@@ -182,40 +182,7 @@ static HAL_StatusTypeDef OLED_SendCommandWithTwoParams(
 
 OLED_Status OLED_Clear(OLED *dev)
 {
-	/* Set the active GDDRAM column range to the full display width */
-	if (OLED_SendCommandWithTwoParams(
-			dev,
-			OLED_CMD_SET_COLUMN_ADDRESS,
-			OLED_COLUMN_START,
-			OLED_COLUMN_END) != HAL_OK)
-	{
-		dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
-		return OLED_ERROR_I2C;
-	}
-
-	/* Set the active GDDRAM page range to the full display height */
-	if (OLED_SendCommandWithTwoParams(
-			dev,
-			OLED_CMD_SET_PAGE_ADDRESS,
-			OLED_PAGE_START,
-			OLED_PAGE_END) != HAL_OK)
-	{
-		dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
-		return OLED_ERROR_I2C;
-	}
-	uint8_t clear_data[OLED_DATA_CHUNK_SIZE] = {0};
-
-	/* Clear the full GDDRAM in 16-byte blocks */
-	for (uint16_t i = 0; i < OLED_GDDRAM_SIZE; i += OLED_DATA_CHUNK_SIZE)
-	{
-		if (OLED_SendData(dev, clear_data, OLED_DATA_CHUNK_SIZE) != HAL_OK)
-		{
-			dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
-			return OLED_ERROR_I2C;
-		}
-	}
-    	dev->i2c_error = HAL_I2C_ERROR_NONE;
-    	return OLED_OK;
+	return OLED_Fill(dev, 0x00);
 }
 
 /*
@@ -252,7 +219,7 @@ OLED_Status OLED_Fill(OLED *dev, uint8_t pattern)
 		fill_data[i] = pattern;
 	}
 
-	/* FIll the full GDDRAM in 16-byte blocks */
+	/* Fill the full GDDRAM in 16-byte blocks */
 	for (uint16_t i = 0; i < OLED_GDDRAM_SIZE; i += OLED_DATA_CHUNK_SIZE)
 	{
 		if (OLED_SendData(dev, fill_data, OLED_DATA_CHUNK_SIZE) != HAL_OK)
