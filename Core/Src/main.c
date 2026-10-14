@@ -125,7 +125,7 @@ int main(void)
       oled_status = OLED_Clear(&oled);
 	if(oled_status == OLED_OK)
 	{
-		oled_status = OLED_DrawChar(&oled, 'B', 10, 2);
+		oled_status = OLED_DrawString(&oled, "HELLO", 0, 2);
 	}
    }
   /* USER CODE END 2 */

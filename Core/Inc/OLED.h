@@ -74,5 +74,10 @@ OLED_Status OLED_DrawChar(OLED *dev,
 						  char character,
 						  uint8_t column,
 						  uint8_t page);
+/* Draw a null-terminated string at the selected column and page */
+OLED_Status OLED_DrawString(OLED *dev,
+							const char *text,
+							uint8_t column,
+							uint8_t page);
 
 #endif /* OLED_I2C_DRIVER_H */

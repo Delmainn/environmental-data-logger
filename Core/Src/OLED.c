@@ -279,6 +279,27 @@ OLED_Status OLED_DrawChar(OLED *dev,
 	return OLED_OK;
 }
 
+/*
+ * Draw a null-terminated string at the selected column and page
+ */
+OLED_Status OLED_DrawString(OLED *dev,
+							const char *text,
+							uint8_t column,
+							uint8_t page)
+{
+	while (*text != '\0')
+	{
+		if (OLED_DrawChar(dev, *text, column, page) != OLED_OK)
+		{
+			return OLED_ERROR_I2C;
+		}
+
+		column += FONT5X7_WIDTH + 1;
+		text++;
+	}
+
+	return OLED_OK;
+}
 
 /*
  * Initializes the OLED controller and associate it with an STM32 I2C peripheral
