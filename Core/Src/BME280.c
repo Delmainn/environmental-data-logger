@@ -278,11 +278,25 @@ HAL_StatusTypeDef BME280_ReadMeasurements(BME280 *dev)
 
 	int32_t h;
 
+	uint8_t ctrl_hum = 0x01; /* Humidity oversampling x1 */
+
 	uint8_t ctrl_meas = 0x25;
 	uint8_t sensor_status;
 	uint32_t start_tick;
 
 	HAL_StatusTypeDef status;
+
+	/* Restore humidity oversampling before triggering forced mode */
+	status = BME280_WriteRegister(
+			dev,
+			BME280_REG_CTRL_HUM,
+			&ctrl_hum
+	);
+
+	if (status != HAL_OK)
+	{
+		return status;
+	}
 
 	/* Trigger one forced measurement. */
 	status = BME280_WriteRegister(
@@ -346,6 +360,13 @@ HAL_StatusTypeDef BME280_ReadMeasurements(BME280 *dev)
 		adc_H = ((int32_t)data[6] << 8)  |
 				(int32_t)data[7];
 
+		/* Reject skipped or invalid raw measurements. */
+		if ((adc_P == 0x80000) ||
+			(adc_T == 0x80000) ||
+			(adc_H == 0x8000))
+		{
+			return HAL_ERROR;
+		}
 		/*
 		 * Bosch reference temperature compensation.
 		 * Produces temperature in 0.01 degC and t_fine for
