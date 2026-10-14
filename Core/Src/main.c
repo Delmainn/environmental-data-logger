@@ -122,7 +122,8 @@ int main(void)
 
   if (oled_status == OLED_OK)
   {
-      oled_status = OLED_Clear(&oled);
+      //oled_status = OLED_Clear(&oled);
+	  oled_status = OLED_Fill(&oled, 0xAA);
   }
   /* USER CODE END 2 */
 

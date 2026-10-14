@@ -63,6 +63,9 @@ typedef struct
 /* Clear all pixels in the OLED GDDRAM */
 OLED_Status OLED_Clear(OLED *dev);
 
+/* Fill the OLED GDDRAM with a repeated byte pattern */
+OLED_Status OLED_Fill(OLED *dev, uint8_t pattern);
+
 /* Initialize the OLED controller on the selected I2C peripheral */
 OLED_Status OLED_Initialise(OLED *dev, I2C_HandleTypeDef *i2cHandle);
 

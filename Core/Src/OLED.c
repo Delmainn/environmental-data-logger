@@ -218,6 +218,53 @@ OLED_Status OLED_Clear(OLED *dev)
     	return OLED_OK;
 }
 
+/*
+ * Fills the OLED GDDRAM with a repeated byte pattern
+ */
+OLED_Status OLED_Fill(OLED *dev, uint8_t pattern)
+{
+	/* Set the active GDDRAM column range to the full display width */
+	if (OLED_SendCommandWithTwoParams(
+			dev,
+			OLED_CMD_SET_COLUMN_ADDRESS,
+			OLED_COLUMN_START,
+			OLED_COLUMN_END) != HAL_OK)
+	{
+		dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+		return OLED_ERROR_I2C;
+	}
+
+	/* Set the active GDDRAM page range to the full display height */
+	if (OLED_SendCommandWithTwoParams(
+			dev,
+			OLED_CMD_SET_PAGE_ADDRESS,
+			OLED_PAGE_START,
+			OLED_PAGE_END) != HAL_OK)
+	{
+		dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+		return OLED_ERROR_I2C;
+	}
+	uint8_t fill_data[OLED_DATA_CHUNK_SIZE];
+
+	/* Fill the transmit buffer with the requested GDDRAM pattern */
+	for (uint16_t i = 0; i < OLED_DATA_CHUNK_SIZE; i++)
+	{
+		fill_data[i] = pattern;
+	}
+
+	/* FIll the full GDDRAM in 16-byte blocks */
+	for (uint16_t i = 0; i < OLED_GDDRAM_SIZE; i += OLED_DATA_CHUNK_SIZE)
+	{
+		if (OLED_SendData(dev, fill_data, OLED_DATA_CHUNK_SIZE) != HAL_OK)
+		{
+			dev->i2c_error = HAL_I2C_GetError(dev->i2cHandle);
+			return OLED_ERROR_I2C;
+		}
+	}
+
+	dev->i2c_error = HAL_I2C_ERROR_NONE;
+	return OLED_OK;
+}
 
 /*
  * Initializes the OLED controller and associate it with an STM32 I2C peripheral
