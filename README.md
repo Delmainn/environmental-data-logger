@@ -11,6 +11,8 @@ The current firmware acquires environmental measurements from a Bosch BME280 sen
 **Persistent data logging and FreeRTOS integration are not yet implemented.**
 
 <!-- Add a photo of the running system here, e.g.: ![Live readings on the OLED](docs/milestone1.jpg) -->
+<img width="3024" height="4032" alt="IMG_1041" src="https://github.com/user-attachments/assets/df7e1fd9-2f81-4e93-a5fc-93a2ddab7e83" />
+
 
 ## Hardware
 
